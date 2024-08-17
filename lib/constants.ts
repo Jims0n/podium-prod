@@ -2,15 +2,15 @@ import { NavbarItemType } from "@/types/Navbar.type";
 
 export const NAVBAR_ITEMS: NavbarItemType[] = [
     {
-        label: "Dashboard",
-        link: "/",
+        label: "Profile",
+        link: "/profile",
     },
     {
-        label: "Explorer",
-        link: "/explorer",
+        label: "Leaderboard",
+        link: "/leaderboard",
     },
     {
-        label: "About us",
-        link: "/about",
+        label: "Rules",
+        link: "/rules",
     },
 ];

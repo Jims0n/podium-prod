@@ -13,7 +13,7 @@ const Logo: React.FC<Props> = ({ isMobile }) => {
         <Coins className="stroke size-8 stroke-violet-500 stroke-[1.5]" />
       ) : null}
       <p className="bg-gradient-to-r from-indigo-500 via-violet-500 to-pink-500 bg-clip-text text-2xl font-bold leading-tight tracking-tighter text-transparent">
-        Solana
+        Podium
       </p>
     </Link>
   );
