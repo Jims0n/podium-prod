@@ -1,13 +1,41 @@
+"use client"
 import Image from "next/image";
 import helmet from "@/public/images/helmet.png";
 import { drivers } from "@/lib/drivers";
+import React, { useEffect, useMemo, useState } from "react";
 
-import { useState } from "react";
+import ChangePlayer from "@/components/ChangePlayer";
+import { Button } from "@/components/ui/button";
 
 
 
 export default function Home() {
 
+  // State for each button's currentIndex
+  const [currentIndex1, setCurrentIndex1] = useState(0);
+  const [currentIndex2, setCurrentIndex2] = useState(1);
+  const [currentIndex3, setCurrentIndex3] = useState(2);
+
+
+// Function to handle forward click
+const handleForwardClick = (
+  setCurrentIndex: (index: number) => void,
+  currentIndex: number,
+) => {
+  if (currentIndex < drivers.length - 1) {
+    setCurrentIndex(currentIndex + 1);
+  }
+};
+
+// Function to handle backward click
+const handleBackwardClick = (
+  setCurrentIndex: (index: number) => void,
+  currentIndex: number,
+) => {
+  if (currentIndex > 0) {
+    setCurrentIndex(currentIndex - 1);
+  }
+};
 
   return (
    <>
@@ -41,24 +69,109 @@ export default function Home() {
                   <span className=" num rowdies-300 w-[15%] text-center text-[30px]">
                     1st
                   </span>
-                  
+                  <ChangePlayer
+                  color={"#F6EAC2"}
+                  currentIndex={currentIndex2}
+                  onSelectName={() => {}}
+                  onForwardClick={() =>
+                    handleForwardClick(setCurrentIndex2, currentIndex2)
+                  }
+                  onBackwardClick={() =>
+                    handleBackwardClick(setCurrentIndex2, currentIndex2)
+                  }
+                  />
                 </div>
 
                 <div className="mt-5 flex h-[80px] w-full flex-row items-center justify-between gap-[24px]">
                   <span className="num rowdies-300 w-[15%] text-center text-[30px]">
                     2nd
                   </span>
-                 
+                  <ChangePlayer 
+                  currentIndex={currentIndex1}
+                  onSelectName={() => {}}
+                  onForwardClick={() =>
+                    handleForwardClick(setCurrentIndex1, currentIndex1)
+                  }
+                  onBackwardClick={() =>
+                    handleBackwardClick(setCurrentIndex1, currentIndex1)
+                  }
+                  color={"#DFCCF1"}
+                  />
                 </div>
 
                 <div className="mt-5 flex h-[80px] w-full flex-row items-center justify-between gap-[24px]">
                   <span className="num rowdies-300 w-[15%] text-center text-[30px]">
                     3rd
                   </span>
-                 
+                  <ChangePlayer 
+                   currentIndex={currentIndex3}
+                   onSelectName={() => {}}
+                   onForwardClick={() =>
+                     handleForwardClick(setCurrentIndex3, currentIndex3)
+                   }
+                   onBackwardClick={() =>
+                     handleBackwardClick(setCurrentIndex3, currentIndex3)
+                   }
+                   color={"#FFB8B1"}
+                  />
                 </div>
               </div>
             </div>
+
+            <div className=" container flex h-full w-full flex-col gap-4">
+                <div className="relative w-full">
+                <div className="flex w-full items-center justify-center">
+                  <div className="mx-auto h-full min-h-[350px] w-full rounded-lg border border-black  bg-background-illustration bg-cover bg-center bg-no-repeat md:h-1/3 md:min-h-[420px]"> </div>
+                </div>
+
+                   <div className="absolute inset-0 flex h-full w-full flex-row items-end justify-center gap-4 p-4">
+                   <div className=" flex w-1/3 flex-col items-center justify-center">
+                    <img
+                      src="/images/podium_silver.webp"
+                      alt="second winner"
+                      className="relative z-10 h-full w-[95%]"
+                    />
+                    <div className="relative z-0 -mt-4 rounded-lg border border-black bg-second-place p-4 py-6 text-center">
+                      {drivers[currentIndex1].driver}&trade;
+                    </div>
+                  </div>
+
+                  <div className="-mt-12 flex w-1/3 flex-col items-center justify-center">
+                    <img
+                      src="/images/podium_gold.webp"
+                      alt="winner"
+                      className="relative z-10 h-full w-[100%]"
+                    />
+                    <div className="relative z-0 -mt-4 rounded-lg border border-black bg-first-place p-4 py-8 text-center">
+                      {drivers[currentIndex2].driver}&trade;
+                    </div>
+                  </div>
+
+                  <div className="flex w-1/3 flex-col items-center justify-center">
+                    <img
+                      src="/images/podium_bronze.webp"
+                      alt="third winner"
+                      className="relative z-10 h-full w-[95%]"
+                    />
+                    <div className="relative z-0  -mt-4 rounded-lg border border-black bg-third-place p-4 text-center">
+                      {drivers[currentIndex3].driver}&trade;
+                    </div>
+                  </div>
+                   </div>
+                </div>
+
+                <div className="relative">
+                <button
+                  
+                  className="relative z-20 roboto-400 text-[35px] h-[90px] w-full rounded-[16px] border-[0.5px] border-black bg-white transition-all duration-300  ease-in-out hover:translate-x-[-4px] hover:translate-y-[-4px] hover:rounded-md hover:bg-opacity-100 hover:shadow-[#FFF6EA] active:translate-x-[0px]
+                     active:translate-y-[0px] active:rounded-2xl active:shadow-none"
+                >
+                   Mint!
+                </button>
+                  <div className="absolute -bottom-1 z-10 h-full w-full rounded-2xl bg-[#B5EAD6]"></div>
+                </div>
+            </div>
+
           </div>
       </section>
    </div>
