@@ -3,11 +3,14 @@ import Image from "next/image";
 import helmet from "@/public/images/helmet.png";
 import { drivers } from "@/lib/drivers";
 import React, { useEffect, useMemo, useState } from "react";
-
+import { toast } from "sonner"
 import ChangePlayer from "@/components/ChangePlayer";
 import { Button } from "@/components/ui/button";
 
+import CreateNft from "@/components/CreateNft";
 
+
+export const grandPrix = "FORMULA 1 HEINEKEN SILVER LAS VEGAS GRAND PRIX 2023";
 
 export default function Home() {
 
@@ -16,6 +19,19 @@ export default function Home() {
   const [currentIndex2, setCurrentIndex2] = useState(1);
   const [currentIndex3, setCurrentIndex3] = useState(2);
 
+  // Compute the values to pass to CreateNft
+  const racerNames = [
+    drivers[currentIndex1].driver,
+    drivers[currentIndex2].driver,
+    drivers[currentIndex3].driver,
+  ];
+  const uniqueRacerNames = new Set(racerNames);
+
+  const first = drivers[currentIndex1].driver.replace(/\s/g, "-");
+  const second = drivers[currentIndex2].driver.replace(/\s/g, "-");
+  const third = drivers[currentIndex3].driver.replace(/\s/g, "-");
+  const race = grandPrix.replace(/\s/g, "-");
+  
 
 // Function to handle forward click
 const handleForwardClick = (
@@ -161,13 +177,14 @@ const handleBackwardClick = (
                 </div>
 
                 <div className="relative">
-                <button
-                  
-                  className="relative z-20 roboto-400 text-[35px] h-[90px] w-full rounded-[16px] border-[0.5px] border-black bg-white transition-all duration-300  ease-in-out hover:translate-x-[-4px] hover:translate-y-[-4px] hover:rounded-md hover:bg-opacity-100 hover:shadow-[#FFF6EA] active:translate-x-[0px]
-                     active:translate-y-[0px] active:rounded-2xl active:shadow-none"
-                >
-                   Mint!
-                </button>
+               <CreateNft
+                first={first}
+                second={second}
+                third={third}
+                race={race}
+                hasDuplicate={racerNames.length !== uniqueRacerNames.size}
+                
+               />
                   <div className="absolute -bottom-1 z-10 h-full w-full rounded-2xl bg-[#B5EAD6]"></div>
                 </div>
             </div>
