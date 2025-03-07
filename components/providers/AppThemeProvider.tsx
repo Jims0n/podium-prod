@@ -1,3 +1,4 @@
+"use client"
 import React, { PropsWithChildren } from "react";
 import { ThemeProvider } from "next-themes";
 const AppThemeProvider: React.FC<PropsWithChildren> = ({ children }) => {

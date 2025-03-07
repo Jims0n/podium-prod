@@ -1,13 +1,19 @@
+"use client"
 import React, { PropsWithChildren } from "react";
-import SolanaProvider from "./SolanaProvider";
-import AppThemeProvider from "./AppThemeProvider";
+import { ThemeProvider } from "next-themes";
+import { SolanaWalletProvider } from "./SolanaWalletProvider";
 import { Toaster } from "../ui/sonner";
+import ClientOnly from "../utils/ClientOnly";
 
 export const AppProvider: React.FC<PropsWithChildren> = ({ children }) => {
   return (
-    <SolanaProvider>
-      <Toaster richColors position="bottom-right" />
-      <AppThemeProvider>{children}</AppThemeProvider>
-    </SolanaProvider>
+    <ThemeProvider attribute="class" defaultTheme="dark">
+      <ClientOnly fallback={<div className="min-h-screen bg-background"></div>}>
+        <SolanaWalletProvider>
+          <Toaster richColors position="bottom-right" />
+          {children}
+        </SolanaWalletProvider>
+      </ClientOnly>
+    </ThemeProvider>
   );
 };

@@ -67,3 +67,33 @@
     @apply bg-background text-foreground;
   }
 }
+
+/* Wallet adapter custom styles */
+.wallet-adapter-button {
+  background-color: #512da8 !important;
+  border-radius: 0.5rem !important;
+  padding: 0.5rem 1rem !important;
+  font-size: 0.875rem !important;
+  font-weight: 500 !important;
+  transition: background-color 0.2s ease-in-out !important;
+}
+
+.wallet-adapter-button:hover {
+  background-color: #673ab7 !important;
+}
+
+.wallet-adapter-modal-wrapper {
+  background-color: #1a1b1f !important;
+}
+
+.wallet-adapter-modal-button-close {
+  background-color: #2d2e33 !important;
+}
+
+.wallet-adapter-modal-title {
+  color: white !important;
+}
+
+.wallet-adapter-modal-content {
+  color: #a1a1aa !important;
+}

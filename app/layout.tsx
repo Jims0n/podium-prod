@@ -11,8 +11,8 @@ const inter = Inter({
 });
 
 export const metadata: Metadata = {
-  title: "Next.js Solana Boilerplate",
-  description: "Next.js Solana Boilerplate",
+  title: "Podium League",
+  description: "Sporting Labs Podium League - Solana-powered sports prediction platform",
 };
 
 export default function RootLayout({
