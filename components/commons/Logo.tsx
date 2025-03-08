@@ -1,4 +1,5 @@
-import { Coins, FileBadge } from "lucide-react";
+"use client"
+import { Coins } from "lucide-react";
 import Link from "next/link";
 import React from "react";
 

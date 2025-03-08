@@ -23,7 +23,7 @@ export default function Home() {
     <div className="flex flex-col items-center justify-center min-h-[calc(100vh-4rem)] p-4 text-center">
       <div className="max-w-3xl space-y-8">
         <Image 
-          src={"/images/podium.png"} 
+          src="/images/podium.png" 
           alt="Podium League" 
           width={200} 
           height={200} 
@@ -50,6 +50,10 @@ export default function Home() {
                 Please connect your wallet to continue
               </span>
             </div>
+            
+            <p className="text-muted-foreground">
+              Click the &quot;Connect Wallet&quot; button in the top right corner to get started
+            </p>
           </div>
         }>
           {isAuthenticated ? (
@@ -62,11 +66,18 @@ export default function Home() {
               </div>
               
               <div className="flex flex-col sm:flex-row gap-4 justify-center">
-                <Button asChild size="lg">
-                  <Link href="/predictions">
-                    Make Predictions
-                  </Link>
-                </Button>
+                <div className="relative">
+                  <Button 
+                    asChild 
+                    size="lg" 
+                    className="relative z-20 h-[60px] w-[200px] rounded-[16px] border-[0.5px] border-black bg-white transition-all duration-300 ease-in-out hover:translate-x-[-4px] hover:translate-y-[-4px] hover:shadow-lg"
+                  >
+                    <Link href="/predictions">
+                      Make Predictions
+                    </Link>
+                  </Button>
+                  <div className="absolute -bottom-1 -right-1 z-10 h-full w-full rounded-2xl bg-[#B5EAD6]"></div>
+                </div>
                 <Button asChild variant="outline" size="lg">
                   <Link href="/leaderboard">
                     View Leaderboard

@@ -2,7 +2,6 @@
 import Link from "next/link";
 import { cn } from "@/lib/utils";
 import WalletConnectButton from "./WalletConnectButton";
-import Image from "next/image";
 import { useWalletAuth } from "@/hooks/useWalletAuth";
 import ClientOnly from "../utils/ClientOnly";
 import Logo from "./Logo";
