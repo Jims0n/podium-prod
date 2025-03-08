@@ -23,10 +23,10 @@ export default function Home() {
     <div className="flex flex-col items-center justify-center min-h-[calc(100vh-4rem)] p-4 text-center">
       <div className="max-w-3xl space-y-8">
         <Image 
-          src="/podium-logo.svg" 
+          src={"/images/podium.png"} 
           alt="Podium League" 
-          width={120} 
-          height={120} 
+          width={200} 
+          height={200} 
           className="mx-auto"
         />
         
