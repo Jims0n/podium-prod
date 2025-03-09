@@ -7,7 +7,7 @@ import ClientOnly from "../utils/ClientOnly";
 
 export const AppProvider: React.FC<PropsWithChildren> = ({ children }) => {
   return (
-    <ThemeProvider attribute="class" defaultTheme="dark">
+    <ThemeProvider attribute="class" defaultTheme="light" enableSystem disableTransitionOnChange>
       <ClientOnly fallback={<div className="min-h-screen bg-background"></div>}>
         <SolanaWalletProvider>
           <Toaster richColors position="bottom-right" />

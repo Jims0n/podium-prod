@@ -5,6 +5,7 @@ import WalletConnectButton from "./WalletConnectButton";
 import { useWalletAuth } from "@/hooks/useWalletAuth";
 import ClientOnly from "../utils/ClientOnly";
 import Logo from "./Logo";
+import ThemeToogle from "./ThemeToogle";
 
 const Navbar = () => {
   const { isAuthenticated } = useWalletAuth();
@@ -52,6 +53,7 @@ const Navbar = () => {
         </div>
         <div className="flex flex-1 items-center justify-end space-x-4">
           <ClientOnly>
+            <ThemeToogle />
             <WalletConnectButton />
           </ClientOnly>
         </div>

@@ -67,16 +67,12 @@ export default function Home() {
               
               <div className="flex flex-col sm:flex-row gap-4 justify-center">
                 <div className="relative">
-                  <Button 
-                    asChild 
-                    size="lg" 
-                    className="relative z-20 h-[60px] w-[200px] rounded-[16px] border-[0.5px] border-black bg-white transition-all duration-300 ease-in-out hover:translate-x-[-4px] hover:translate-y-[-4px] hover:shadow-lg"
-                  >
+                  <Button asChild size="lg">
                     <Link href="/predictions">
                       Make Predictions
                     </Link>
                   </Button>
-                  <div className="absolute -bottom-1 -right-1 z-10 h-full w-full rounded-2xl bg-[#B5EAD6]"></div>
+                  {/* <div className="absolute -bottom-1 -right-1 z-10 h-full w-full rounded-2xl bg-[#B5EAD6]"></div> */}
                 </div>
                 <Button asChild variant="outline" size="lg">
                   <Link href="/leaderboard">

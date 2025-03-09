@@ -236,14 +236,14 @@ export default function PredictionsPage() {
                     alt="Video cover"
                     width={220}
                     height={120}
-                    onClick={() => window.open("https://www.youtube.com/watch?v=pjynoXnzUEw", "_blank")}
+                    onClick={() => window.open("", "_blank")}
                   />
                 </div>
               </div>
               <div className="mt-4 flex justify-center">
                 <div className="relative">
                   <Button
-                    onClick={() => window.open("https://sporting.gg", "_blank")}
+                    onClick={() => window.open("", "_blank")}
                     className="relative z-20 h-[45px] w-[150px] rounded-[16px] border-[0.5px] border-black bg-white transition-all duration-300 ease-in-out hover:translate-x-[-4px] hover:translate-y-[-4px] hover:shadow-lg text-base font-medium"
                     variant="outline"
                   >
