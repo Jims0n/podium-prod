@@ -1,10 +1,9 @@
 "use client"
 import React from 'react'
 import { Button } from './ui/button';
-import Image from "next/image";
 import { drivers } from '@/constants/drivers';
 
-interface ButtonProps {
+interface ChangePlayerProps {
     currentIndex: number;
     onForwardClick: () => void;
     onBackwardClick: () => void;
@@ -12,7 +11,7 @@ interface ButtonProps {
     onSelectName: (name: string) => void;
 }
 
-const ChangePlayer: React.FC<ButtonProps> = ({
+const ChangePlayer: React.FC<ChangePlayerProps> = ({
     currentIndex,
     onForwardClick,
     onBackwardClick,
@@ -20,17 +19,20 @@ const ChangePlayer: React.FC<ButtonProps> = ({
     onSelectName
 }) => {
     const currentName = drivers[currentIndex].driver;
+    const isFirstDriver = currentIndex === 0;
+    const isLastDriver = currentIndex === drivers.length - 1;
+    
     return (
         <Button
             onClick={() => onSelectName(currentName)}
             style={{ backgroundColor: color }}
-            className={`outline-black-100 flex h-[60px] w-[270px] items-center justify-between rounded-xl p-2 px-2 text-[13px] outline outline-1 outline-offset-0`}
+            className="outline-black-100 flex h-[60px] w-[270px] items-center justify-between rounded-xl p-2 px-2 text-[13px] outline outline-1 outline-offset-0"
         >
             <div
                 className="h-6 w-6 cursor-pointer flex items-center justify-center"
                 onClick={(e) => {
                     e.stopPropagation();
-                    currentIndex !== 0 && onBackwardClick();
+                    !isFirstDriver && onBackwardClick();
                 }}
             >
                 <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
@@ -42,7 +44,7 @@ const ChangePlayer: React.FC<ButtonProps> = ({
                 className="h-6 w-6 cursor-pointer flex items-center justify-center"
                 onClick={(e) => {
                     e.stopPropagation();
-                    currentIndex !== drivers.length - 1 && onForwardClick();
+                    !isLastDriver && onForwardClick();
                 }}
             >
                 <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">

@@ -42,11 +42,11 @@ A sports prediction platform powered by Solana blockchain. This project allows u
 
 4. Start the development server:
 
-   ```bash
-   npm run dev
-   # or
-   yarn dev
-   ```
+```bash
+npm run dev
+# or
+yarn dev
+```
 
 5. Open [http://localhost:3000](http://localhost:3000) in your browser.
 

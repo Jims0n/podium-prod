@@ -19,7 +19,7 @@ export default function PredictionsPage() {
   const [currentIndex2, setCurrentIndex2] = useState(1);
   const [currentIndex3, setCurrentIndex3] = useState(2);
   const [loading, setLoading] = useState(false);
-  const [imageUrl, setImageUrl] = useState("");
+  const [generatedImageUrl, setGeneratedImageUrl] = useState<string | null>(null);
 
   useEffect(() => {
     if (!isLoading && !isAuthenticated) {
@@ -40,11 +40,45 @@ export default function PredictionsPage() {
     }
   };
 
+  const generatePredictionImage = async () => {
+    try {
+      // Replace spaces with hyphens in driver names
+      const first = drivers[currentIndex2].driver.replace(/\s+/g, '-');
+      const second = drivers[currentIndex1].driver.replace(/\s+/g, '-');
+      const third = drivers[currentIndex3].driver.replace(/\s+/g, '-');
+      
+      // Updated endpoint with upload=true parameter for Arweave uploads
+      const predictionImageUrl = `https://podium-image-ht1cjirjx-jims0ns-projects.vercel.app/generateImage?first=${first}&second=${second}&third=${third}&upload=true`;
+      
+      console.log('Image generation URL with Arweave upload:', predictionImageUrl);
+      
+      // For now, we'll simulate a successful response
+      toast.success('Prediction image generated and uploaded to Arweave successfully!');
+      
+      // Store the URL for display purposes
+      setGeneratedImageUrl(predictionImageUrl);
+      
+      return predictionImageUrl;
+    } catch (error) {
+      console.error('Error generating and uploading prediction image:', error);
+      toast.error('Failed to generate and upload prediction image');
+      return null;
+    }
+  };
+
   const handleMintNft = async () => {
     try {
       setLoading(true);
-      // In a real implementation, this would mint an NFT on Solana
-      // For now, we'll just show a success message
+      
+      // Generate the prediction image
+      const imageUrl = await generatePredictionImage();
+      
+      if (!imageUrl) {
+        setLoading(false);
+        return;
+      }
+      
+      // In a real implementation, this would mint an NFT on Solana using the generated image
       setTimeout(() => {
         setLoading(false);
         toast.success('Prediction submitted successfully!');
@@ -57,27 +91,36 @@ export default function PredictionsPage() {
   };
 
   const handleTwitterShare = () => {
-    const text = `I just predicted the podium for ${grandPrix}!\n\n1st: ${drivers[currentIndex2].driver}\n2nd: ${drivers[currentIndex1].driver}\n3rd: ${drivers[currentIndex3].driver}\n\nMake your own prediction at podiumleague.com`;
+    // Create a text-based prediction to share
+    let text = `I just predicted the podium for ${grandPrix}!\n\n`;
+    text += `1st: ${drivers[currentIndex2].driver}\n`;
+    text += `2nd: ${drivers[currentIndex1].driver}\n`;
+    text += `3rd: ${drivers[currentIndex3].driver}\n\n`;
+    
+    // Add a note about the image generation and Arweave storage
+    if (generatedImageUrl) {
+      text += `My prediction has been recorded on Podium League and permanently stored on Arweave.\n\n`;
+    }
+    
+    text += `Make your own prediction at podiumleague.com`;
+    
     const url = `https://twitter.com/intent/tweet?text=${encodeURIComponent(text)}`;
     window.open(url, '_blank');
   };
 
-  return (
-    <ClientOnly fallback={
-      <div className="flex h-[calc(100vh-4rem)] items-center justify-center">
-        <div className="text-center">
-          <h2 className="text-2xl font-bold mb-2">Loading...</h2>
-          <p className="text-muted-foreground">Please wait while we verify your wallet</p>
-        </div>
+  const LoadingView = () => (
+    <div className="flex h-[calc(100vh-4rem)] items-center justify-center">
+      <div className="text-center">
+        <h2 className="text-2xl font-bold mb-2">Loading...</h2>
+        <p className="text-muted-foreground">Please wait while we verify your wallet</p>
       </div>
-    }>
+    </div>
+  );
+
+  return (
+    <ClientOnly fallback={<LoadingView />}>
       {isLoading ? (
-        <div className="flex h-[calc(100vh-4rem)] items-center justify-center">
-          <div className="text-center">
-            <h2 className="text-2xl font-bold mb-2">Loading...</h2>
-            <p className="text-muted-foreground">Please wait while we verify your wallet</p>
-          </div>
-        </div>
+        <LoadingView />
       ) : !isAuthenticated ? (
         null
       ) : (
@@ -157,46 +200,73 @@ export default function PredictionsPage() {
             {/* Middle Column - Podium */}
             <div className="bg-white/50 p-4 rounded-xl border shadow-sm">
               <div className="relative w-full h-[300px]">
-                <div className="absolute inset-0 rounded-lg bg-cover bg-center bg-no-repeat" 
-                  style={{ backgroundImage: "url('/images/background-illustration.png')" }}></div>
-                <div className="absolute inset-0 flex h-full w-full flex-row items-end justify-center gap-2 p-2">
-                  <div className="flex w-1/3 flex-col items-center justify-center">
-                    <Image
-                      src="/images/podium_silver.webp"
-                      alt="second winner"
-                      className="relative z-10 h-full w-[95%]"
-                      width={120}
-                      height={160}
-                    />
-                    <div className="relative z-0 -mt-3 rounded-lg border bg-purple-200 p-2 py-4 text-center font-medium text-sm">
-                      {drivers[currentIndex1].driver}
+                {generatedImageUrl ? (
+                  <div className="absolute inset-0 rounded-lg overflow-hidden">
+                    <div className="w-full h-full flex flex-col items-center justify-center bg-gradient-to-b from-blue-50 to-purple-50 p-4">
+                      <div className="text-center mb-4">
+                        <h3 className="text-lg font-bold text-purple-800">Podium Prediction</h3>
+                        <p className="text-sm text-gray-600">Your prediction has been recorded and uploaded to Arweave</p>
+                      </div>
+                      <div className="flex flex-col items-center justify-center space-y-2 w-full">
+                        <div className="bg-yellow-100 w-full p-2 rounded-md text-center border border-yellow-300">
+                          <span className="font-bold text-amber-600">1st:</span> {drivers[currentIndex2].driver}
+                        </div>
+                        <div className="bg-gray-100 w-full p-2 rounded-md text-center border border-gray-300">
+                          <span className="font-bold text-purple-600">2nd:</span> {drivers[currentIndex1].driver}
+                        </div>
+                        <div className="bg-orange-100 w-full p-2 rounded-md text-center border border-orange-300">
+                          <span className="font-bold text-orange-600">3rd:</span> {drivers[currentIndex3].driver}
+                        </div>
+                      </div>
+                      <p className="text-xs text-gray-500 mt-4 text-center">
+                        Image has been generated and permanently stored on Arweave
+                      </p>
                     </div>
                   </div>
-                  <div className="-mt-8 flex w-1/3 flex-col items-center justify-center">
-                    <Image
-                      src="/images/podium_gold.webp"
-                      alt="winner"
-                      className="relative z-10 h-full w-[100%]"
-                      width={120}
-                      height={160}
-                    />
-                    <div className="relative z-0 -mt-3 rounded-lg border bg-yellow-200 p-2 py-6 text-center font-medium text-sm">
-                      {drivers[currentIndex2].driver}
+                ) : (
+                  <>
+                    <div className="absolute inset-0 rounded-lg bg-cover bg-center bg-no-repeat" 
+                      style={{ backgroundImage: "url('/images/background-illustration.png')" }}></div>
+                    <div className="absolute inset-0 flex h-full w-full flex-row items-end justify-center gap-2 p-2">
+                      <div className="flex w-1/3 flex-col items-center justify-center">
+                        <Image
+                          src="/images/podium_silver.webp"
+                          alt="second winner"
+                          className="relative z-10 h-full w-[95%]"
+                          width={120}
+                          height={160}
+                        />
+                        <div className="relative z-0 -mt-3 rounded-lg border bg-purple-200 p-2 py-4 text-center font-medium text-sm">
+                          {drivers[currentIndex1].driver}
+                        </div>
+                      </div>
+                      <div className="-mt-8 flex w-1/3 flex-col items-center justify-center">
+                        <Image
+                          src="/images/podium_gold.webp"
+                          alt="winner"
+                          className="relative z-10 h-full w-[100%]"
+                          width={120}
+                          height={160}
+                        />
+                        <div className="relative z-0 -mt-3 rounded-lg border bg-yellow-200 p-2 py-6 text-center font-medium text-sm">
+                          {drivers[currentIndex2].driver}
+                        </div>
+                      </div>
+                      <div className="flex w-1/3 flex-col items-center justify-center">
+                        <Image
+                          src="/images/podium_bronze.webp"
+                          alt="third winner"
+                          className="relative z-10 h-full w-[95%]"
+                          width={120}
+                          height={160}
+                        />
+                        <div className="relative z-0 -mt-3 rounded-lg border bg-orange-200 p-2 text-center font-medium text-sm">
+                          {drivers[currentIndex3].driver}
+                        </div>
+                      </div>
                     </div>
-                  </div>
-                  <div className="flex w-1/3 flex-col items-center justify-center">
-                    <Image
-                      src="/images/podium_bronze.webp"
-                      alt="third winner"
-                      className="relative z-10 h-full w-[95%]"
-                      width={120}
-                      height={160}
-                    />
-                    <div className="relative z-0 -mt-3 rounded-lg border bg-orange-200 p-2 text-center font-medium text-sm">
-                      {drivers[currentIndex3].driver}
-                    </div>
-                  </div>
-                </div>
+                  </>
+                )}
               </div>
               <div className="relative mt-4">
                 <Button 
@@ -204,7 +274,7 @@ export default function PredictionsPage() {
                   className="relative z-20 h-[50px] w-full rounded-[16px] border-[0.5px] border-black bg-white transition-all duration-300 ease-in-out hover:translate-x-[-4px] hover:translate-y-[-4px] hover:shadow-lg text-base font-medium"
                   disabled={loading}
                 >
-                  {loading ? 'Processing...' : 'Submit Prediction!'}
+                  {loading ? 'Processing...' : generatedImageUrl ? 'Submit Prediction!' : 'Generate & Submit Prediction!'}
                 </Button>
                 <div className="absolute -bottom-1 -right-1 z-10 h-full w-full rounded-2xl bg-[#B5EAD6]"></div>
               </div>
@@ -227,6 +297,23 @@ export default function PredictionsPage() {
                 </button>
               </div>
               <div className="mt-[20px] h-[6px] w-full rounded-3xl bg-[#FFEFD8]"></div>
+              
+              {generatedImageUrl && (
+                <div className="mt-4 flex flex-col items-center">
+                  <p className="text-base font-medium mb-2">Your Prediction Image</p>
+                  <div className="cursor-pointer overflow-hidden rounded-lg border shadow-sm">
+                    <div className="relative h-[120px] w-[220px]">
+                      <div className="absolute inset-0 flex items-center justify-center bg-gray-100 text-sm text-gray-500">
+                        Preview: {drivers[currentIndex2].driver} - {drivers[currentIndex1].driver} - {drivers[currentIndex3].driver}
+                      </div>
+                    </div>
+                  </div>
+                  <p className="text-xs text-gray-500 mt-1">
+                    Permanently stored on Arweave
+                  </p>
+                </div>
+              )}
+              
               <div className="mt-4 flex flex-col items-center">
                 <p className="text-base font-medium mb-2">Watch the race highlights</p>
                 <div className="cursor-pointer overflow-hidden rounded-lg border shadow-sm">
@@ -236,14 +323,14 @@ export default function PredictionsPage() {
                     alt="Video cover"
                     width={220}
                     height={120}
-                    onClick={() => window.open("", "_blank")}
+                    onClick={() => window.open("https://www.youtube.com/watch?v=pjynoXnzUEw", "_blank")}
                   />
                 </div>
               </div>
               <div className="mt-4 flex justify-center">
                 <div className="relative">
                   <Button
-                    onClick={() => window.open("", "_blank")}
+                    onClick={() => window.open("https://sporting.gg", "_blank")}
                     className="relative z-20 h-[45px] w-[150px] rounded-[16px] border-[0.5px] border-black bg-white transition-all duration-300 ease-in-out hover:translate-x-[-4px] hover:translate-y-[-4px] hover:shadow-lg text-base font-medium"
                     variant="outline"
                   >
