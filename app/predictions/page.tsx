@@ -10,9 +10,11 @@ import { BsTwitter } from 'react-icons/bs';
 import { drivers } from '@/constants/drivers';
 import ChangePlayer from '@/components/ChangePlayer';
 
-export const grandPrix = "FORMULA 1 LOUIS VUITTON AUSTRALIAN GRAND PRIX 2025";
-
 export default function PredictionsPage() {
+  // Constants
+  const GRAND_PRIX = "FORMULA 1 LOUIS VUITTON AUSTRALIAN GRAND PRIX 2025";
+  
+  // State and hooks
   const { isAuthenticated, isLoading, publicKey } = useWalletAuth();
   const router = useRouter();
   const [currentIndex1, setCurrentIndex1] = useState(0);
@@ -52,7 +54,7 @@ export default function PredictionsPage() {
       
       console.log('Image generation URL with Arweave upload:', predictionImageUrl);
       
-      // For now, we&apos;ll simulate a successful response
+      // For now, we'll simulate a successful response
       toast.success('Prediction image generated and uploaded to Arweave successfully!');
       
       // Store the URL for display purposes
@@ -92,7 +94,7 @@ export default function PredictionsPage() {
 
   const handleTwitterShare = () => {
     // Create a text-based prediction to share
-    let text = `I just predicted the podium for ${grandPrix}!\n\n`;
+    let text = `I just predicted the podium for ${GRAND_PRIX}!\n\n`;
     text += `1st: ${drivers[currentIndex2].driver}\n`;
     text += `2nd: ${drivers[currentIndex1].driver}\n`;
     text += `3rd: ${drivers[currentIndex3].driver}\n\n`;
@@ -126,7 +128,7 @@ export default function PredictionsPage() {
       ) : (
         <section className="py-4 px-4 md:px-6 max-w-7xl mx-auto min-h-[calc(100vh-4rem)] flex flex-col">
           <div className="text-center mb-4">
-            <h1 className="text-2xl md:text-3xl font-bold">{grandPrix}</h1>
+            <h1 className="text-2xl md:text-3xl font-bold">{GRAND_PRIX}</h1>
             <p className="text-sm text-muted-foreground">Predict the podium finishers for this race</p>
           </div>
           
@@ -298,7 +300,21 @@ export default function PredictionsPage() {
               </div>
               <div className="mt-[20px] h-[6px] w-full rounded-3xl bg-[#FFEFD8]"></div>
               
-        
+              {generatedImageUrl && (
+                <div className="mt-4 flex flex-col items-center">
+                  <p className="text-base font-medium mb-2">Your Prediction Image</p>
+                  <div className="cursor-pointer overflow-hidden rounded-lg border shadow-sm">
+                    <div className="relative h-[120px] w-[220px]">
+                      <div className="absolute inset-0 flex items-center justify-center bg-gray-100 text-sm text-gray-500">
+                        Preview: {drivers[currentIndex2].driver} - {drivers[currentIndex1].driver} - {drivers[currentIndex3].driver}
+                      </div>
+                    </div>
+                  </div>
+                  <p className="text-xs text-gray-500 mt-1">
+                    Permanently stored on Arweave
+                  </p>
+                </div>
+              )}
               
               <div className="mt-4 flex flex-col items-center">
                 <p className="text-base font-medium mb-2">Watch the race highlights</p>
