@@ -28,13 +28,13 @@ export default function PredictionsPage() {
     }
   }, [isAuthenticated, isLoading, router]);
 
-  const handleForwardClick = (setIndex: React.Dispatch<React.SetStateAction<number>>, currentIndex: number) => {
+  const handleForwardClick = (setIndex: (index: number) => void, currentIndex: number) => {
     if (currentIndex < drivers.length - 1) {
       setIndex(currentIndex + 1);
     }
   };
 
-  const handleBackwardClick = (setIndex: React.Dispatch<React.SetStateAction<number>>, currentIndex: number) => {
+  const handleBackwardClick = (setIndex: (index: number) => void, currentIndex: number) => {
     if (currentIndex > 0) {
       setIndex(currentIndex - 1);
     }
@@ -298,21 +298,7 @@ export default function PredictionsPage() {
               </div>
               <div className="mt-[20px] h-[6px] w-full rounded-3xl bg-[#FFEFD8]"></div>
               
-              {generatedImageUrl && (
-                <div className="mt-4 flex flex-col items-center">
-                  <p className="text-base font-medium mb-2">Your Prediction Image</p>
-                  <div className="cursor-pointer overflow-hidden rounded-lg border shadow-sm">
-                    <div className="relative h-[120px] w-[220px]">
-                      <div className="absolute inset-0 flex items-center justify-center bg-gray-100 text-sm text-gray-500">
-                        Preview: {drivers[currentIndex2].driver} - {drivers[currentIndex1].driver} - {drivers[currentIndex3].driver}
-                      </div>
-                    </div>
-                  </div>
-                  <p className="text-xs text-gray-500 mt-1">
-                    Permanently stored on Arweave
-                  </p>
-                </div>
-              )}
+        
               
               <div className="mt-4 flex flex-col items-center">
                 <p className="text-base font-medium mb-2">Watch the race highlights</p>
