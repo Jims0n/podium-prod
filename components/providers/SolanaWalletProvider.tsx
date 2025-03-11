@@ -47,6 +47,10 @@ export const SolanaWalletProvider: FC<SolanaWalletProviderProps> = ({ children }
     [network]
   );
 
+  const config = useMemo(() => ({
+    // your config options here
+  }), []);
+
   return (
     <ConnectionProvider endpoint={endpoint}>
       <WalletProvider wallets={wallets} autoConnect>

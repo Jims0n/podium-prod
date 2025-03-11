@@ -52,7 +52,7 @@ export default function PredictionsPage() {
       
       console.log('Image generation URL with Arweave upload:', predictionImageUrl);
       
-      // For now, we'll simulate a successful response
+      // For now, we&apos;ll simulate a successful response
       toast.success('Prediction image generated and uploaded to Arweave successfully!');
       
       // Store the URL for display purposes
@@ -279,7 +279,7 @@ export default function PredictionsPage() {
                 <div className="absolute -bottom-1 -right-1 z-10 h-full w-full rounded-2xl bg-[#B5EAD6]"></div>
               </div>
               <p className="mx-auto w-[90%] text-center text-[14px] font-[400] text-[#282828] mt-2">
-                Don't keep the Podium fun to yourself - predict and share away!
+                Don&apos;t keep the Podium fun to yourself - predict and share away!
               </p>
             </div>
 
