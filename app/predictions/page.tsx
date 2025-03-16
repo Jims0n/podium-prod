@@ -9,19 +9,37 @@ import Image from 'next/image';
 import { BsTwitter } from 'react-icons/bs';
 import { drivers } from '@/constants/drivers';
 import ChangePlayer from '@/components/ChangePlayer';
+import { useWallet } from '@solana/wallet-adapter-react';
+import { mintCompressedNft, PredictionAttributes } from '@/services/nftService';
+import Arweave from 'arweave';
+import fs from 'fs'
+import path from 'path';
+
+
+
+// Initialize Arweave
+const arweave = Arweave.init({
+  host: 'arweave.net',
+  port: 443,
+  protocol: 'https',
+});
 
 export default function PredictionsPage() {
   // Constants
   const GRAND_PRIX = "FORMULA 1 LOUIS VUITTON AUSTRALIAN GRAND PRIX 2025";
+  const TREE_CREATOR_KEY = process.env.NEXT_PUBLIC_TREE_CREATOR_KEY;
   
   // State and hooks
   const { isAuthenticated, isLoading, publicKey } = useWalletAuth();
+  const wallet = useWallet(); // Add the wallet hook for minting
   const router = useRouter();
   const [currentIndex1, setCurrentIndex1] = useState(0);
   const [currentIndex2, setCurrentIndex2] = useState(1);
   const [currentIndex3, setCurrentIndex3] = useState(2);
   const [loading, setLoading] = useState(false);
   const [generatedImageUrl, setGeneratedImageUrl] = useState<string | null>(null);
+  const [txSignature, setTxSignature] = useState<string | null>(null);
+  const [mintError, setMintError] = useState<string | null>(null);
 
   useEffect(() => {
     if (!isLoading && !isAuthenticated) {
@@ -42,7 +60,7 @@ export default function PredictionsPage() {
     }
   };
 
-  const generatePredictionImage = async () => {
+  const generatePredictionImage = async (retryCount = 0, maxRetries = 3) => {
     try {
       // Replace spaces with hyphens in driver names
       const first = drivers[currentIndex2].driver.replace(/\s+/g, '-');
@@ -50,44 +68,111 @@ export default function PredictionsPage() {
       const third = drivers[currentIndex3].driver.replace(/\s+/g, '-');
       
       // Updated endpoint with upload=true parameter for Arweave uploads
-      const predictionImageUrl = `https://podium-image-ht1cjirjx-jims0ns-projects.vercel.app/generateImage?first=${first}&second=${second}&third=${third}&upload=true`;
+      const predictionImageUrl = `https://podium-image-api-3h72-git-main-jims0ns-projects.vercel.app/generateImage?first=${first}&second=${second}&third=${third}&upload=true`;
+     
+      //console.log('Image generation URL with Arweave upload:', predictionImageUrl);
       
-      console.log('Image generation URL with Arweave upload:', predictionImageUrl);
+      // Actually fetch the image URL to ensure it's valid
+      const response = await fetch(`/api/proxy?url=${encodeURIComponent(predictionImageUrl)}`);
       
+      if (!response.ok) {
+        throw new Error(`Failed to generate image: ${response.statusText}`);
+      }
+      const data = await response.json();
+      console.log("Arweave:", data.imageUrl);
       // For now, we'll simulate a successful response
       toast.success('Prediction image generated and uploaded to Arweave successfully!');
       
       // Store the URL for display purposes
-      setGeneratedImageUrl(predictionImageUrl);
-      
-      return predictionImageUrl;
+      setGeneratedImageUrl(data.imageUrl);
+      return data.imageUrl;
     } catch (error) {
       console.error('Error generating and uploading prediction image:', error);
-      toast.error('Failed to generate and upload prediction image');
+      
+      // Retry logic
+      if (retryCount < maxRetries) {
+        toast.info(`Retrying image generation (${retryCount + 1}/${maxRetries})...`);
+        return generatePredictionImage(retryCount + 1, maxRetries);
+      }
+      
+      toast.error('Failed to generate and upload prediction image after multiple attempts');
       return null;
     }
   };
 
   const handleMintNft = async () => {
     try {
-      setLoading(true);
-      
-      // Generate the prediction image
-      const imageUrl = await generatePredictionImage();
-      
-      if (!imageUrl) {
-        setLoading(false);
+      // Check if wallet is connected
+      if (!wallet.connected || !wallet.publicKey) {
+        toast.error('Please connect your wallet to mint an NFT');
+        setMintError('Wallet not connected');
         return;
       }
       
-      // In a real implementation, this would mint an NFT on Solana using the generated image
-      setTimeout(() => {
+      setLoading(true);
+      setMintError(null); // Clear any previous errors
+      
+      // Generate the prediction image
+      const imageUrl = await generatePredictionImage();
+
+      if (!imageUrl) {
         setLoading(false);
-        toast.success('Prediction submitted successfully!');
-      }, 2000);
-    } catch (error) {
+        setMintError('Failed to generate prediction image');
+        return;
+      }
+      
+      console.log('Image URL:', imageUrl);
+      
+      // Create the NFT attributes
+      const predictionAttributes: PredictionAttributes = {
+        race: GRAND_PRIX,
+        first: drivers[currentIndex2].driver,
+        second: drivers[currentIndex1].driver,
+        third: drivers[currentIndex3].driver,
+        date: new Date().toISOString().split('T')[0] // Format as YYYY-MM-DD
+      };
+      
+      // Generate a shorter name for the NFT (max 32 characters)
+      const nftName = `Podium: Australian GP 2025`;
+      
+      // Mint the compressed NFT
+      try {
+        const signature = await mintCompressedNft(
+          wallet,
+          imageUrl,
+          nftName,
+          predictionAttributes
+        );
+        
+        setTxSignature(signature);
+        setMintError(null); // Clear any errors on success
+        toast.success('Prediction successfully minted as an NFT!');
+        console.log(`NFT minted successfully! Transaction: ${signature}`);
+      } catch (mintError: any) {
+        console.error('Mint error:', mintError);
+        
+        // Set the error message for the UI
+        let errorMessage = mintError.message || 'Unknown error';
+        
+        // Show a more specific error message based on the error
+        if (mintError.message.includes('Wallet not connected')) {
+          errorMessage = 'Please connect your wallet to mint an NFT';
+        } else if (mintError.message.includes('insufficient funds')) {
+          errorMessage = 'Insufficient SOL balance. Please add more SOL to your wallet.';
+        } else if (mintError.message.includes('User rejected')) {
+          errorMessage = 'Transaction was rejected by the wallet';
+        }
+        
+        setMintError(errorMessage);
+        toast.error(`Failed to mint NFT: ${errorMessage}`);
+      }
+      
       setLoading(false);
-      toast.error('Failed to submit prediction');
+    } catch (error: any) {
+      setLoading(false);
+      const errorMessage = error.message || 'Unknown error';
+      setMintError(errorMessage);
+      toast.error(`Failed to submit prediction: ${errorMessage}`);
       console.error(error);
     }
   };
@@ -104,10 +189,48 @@ export default function PredictionsPage() {
       text += `My prediction has been recorded on Podium League and permanently stored on Arweave.\n\n`;
     }
     
+    // If the transaction was successful, include the transaction link
+    if (txSignature) {
+      text += `View my NFT on Solana Explorer: https://explorer.solana.com/tx/${txSignature}?cluster=devnet\n\n`;
+    }
+    
     text += `Make your own prediction at podiumleague.com`;
     
     const url = `https://twitter.com/intent/tweet?text=${encodeURIComponent(text)}`;
     window.open(url, '_blank');
+  };
+
+  const confirmMint = () => {
+    // Show a confirmation toast
+    toast.info(
+      <div className="flex flex-col gap-2">
+        <p>You are about to mint your prediction as an NFT on Solana.</p>
+        <p>This will require a small amount of SOL for transaction fees.</p>
+        <div className="flex justify-end gap-2 mt-2">
+          <Button 
+            variant="outline" 
+            size="sm" 
+            onClick={() => toast.dismiss()}
+            className="text-xs"
+          >
+            Cancel
+          </Button>
+          <Button 
+            size="sm" 
+            onClick={() => {
+              toast.dismiss();
+              handleMintNft();
+            }}
+            className="text-xs"
+          >
+            Confirm Mint
+          </Button>
+        </div>
+      </div>,
+      {
+        duration: 10000,
+      }
+    );
   };
 
   const LoadingView = () => (
@@ -202,87 +325,112 @@ export default function PredictionsPage() {
             {/* Middle Column - Podium */}
             <div className="bg-white/50 p-4 rounded-xl border shadow-sm">
               <div className="relative w-full h-[300px]">
-                {generatedImageUrl ? (
-                  <div className="absolute inset-0 rounded-lg overflow-hidden">
-                    <div className="w-full h-full flex flex-col items-center justify-center bg-gradient-to-b from-blue-50 to-purple-50 p-4">
-                      <div className="text-center mb-4">
-                        <h3 className="text-lg font-bold text-purple-800">Podium Prediction</h3>
-                        <p className="text-sm text-gray-600">Your prediction has been recorded and uploaded to Arweave</p>
-                      </div>
-                      <div className="flex flex-col items-center justify-center space-y-2 w-full">
-                        <div className="bg-yellow-100 w-full p-2 rounded-md text-center border border-yellow-300">
-                          <span className="font-bold text-amber-600">1st:</span> {drivers[currentIndex2].driver}
-                        </div>
-                        <div className="bg-gray-100 w-full p-2 rounded-md text-center border border-gray-300">
-                          <span className="font-bold text-purple-600">2nd:</span> {drivers[currentIndex1].driver}
-                        </div>
-                        <div className="bg-orange-100 w-full p-2 rounded-md text-center border border-orange-300">
-                          <span className="font-bold text-orange-600">3rd:</span> {drivers[currentIndex3].driver}
-                        </div>
-                      </div>
-                      <p className="text-xs text-gray-500 mt-4 text-center">
-                        Image has been generated and permanently stored on Arweave
-                      </p>
+                {loading && (
+                  <div className="absolute inset-0 z-30 flex items-center justify-center bg-white/70 rounded-lg">
+                    <div className="flex flex-col items-center">
+                      <div className="h-10 w-10 animate-spin rounded-full border-4 border-primary border-t-transparent"></div>
+                      <p className="mt-2 text-sm font-medium">Generating prediction...</p>
                     </div>
                   </div>
-                ) : (
-                  <>
-                    <div className="absolute inset-0 rounded-lg bg-cover bg-center bg-no-repeat" 
-                      style={{ backgroundImage: "url('/images/background-illustration.png')" }}></div>
-                    <div className="absolute inset-0 flex h-full w-full flex-row items-end justify-center gap-2 p-2">
-                      <div className="flex w-1/3 flex-col items-center justify-center">
-                        <Image
-                          src="/images/podium_silver.webp"
-                          alt="second winner"
-                          className="relative z-10 h-full w-[95%]"
-                          width={120}
-                          height={160}
-                        />
-                        <div className="relative z-0 -mt-3 rounded-lg border bg-purple-200 p-2 py-4 text-center font-medium text-sm">
-                          {drivers[currentIndex1].driver}
-                        </div>
-                      </div>
-                      <div className="-mt-8 flex w-1/3 flex-col items-center justify-center">
-                        <Image
-                          src="/images/podium_gold.webp"
-                          alt="winner"
-                          className="relative z-10 h-full w-[100%]"
-                          width={120}
-                          height={160}
-                        />
-                        <div className="relative z-0 -mt-3 rounded-lg border bg-yellow-200 p-2 py-6 text-center font-medium text-sm">
-                          {drivers[currentIndex2].driver}
-                        </div>
-                      </div>
-                      <div className="flex w-1/3 flex-col items-center justify-center">
-                        <Image
-                          src="/images/podium_bronze.webp"
-                          alt="third winner"
-                          className="relative z-10 h-full w-[95%]"
-                          width={120}
-                          height={160}
-                        />
-                        <div className="relative z-0 -mt-3 rounded-lg border bg-orange-200 p-2 text-center font-medium text-sm">
-                          {drivers[currentIndex3].driver}
-                        </div>
-                      </div>
-                    </div>
-                  </>
                 )}
+              
+                <div className="absolute inset-0 rounded-lg bg-cover bg-center bg-no-repeat" 
+                  style={{ backgroundImage: "url('/images/background-illustration.png')" }}></div>
+                <div className="absolute inset-0 flex h-full w-full flex-row items-end justify-center gap-2 p-2">
+                  <div className="flex w-1/3 flex-col items-center justify-center">
+                    <Image
+                      src="/images/podium_silver.webp"
+                      alt="second winner"
+                      className="relative z-10 h-full w-[95%]"
+                      width={120}
+                      height={160}
+                    />
+                    <div className="relative z-0 -mt-3 rounded-lg border bg-purple-200 p-2 py-4 text-center font-medium text-sm">
+                      {drivers[currentIndex1].driver}
+                    </div>
+                  </div>
+                  <div className="-mt-8 flex w-1/3 flex-col items-center justify-center">
+                    <Image
+                      src="/images/podium_gold.webp"
+                      alt="winner"
+                      className="relative z-10 h-full w-[100%]"
+                      width={120}
+                      height={160}
+                    />
+                    <div className="relative z-0 -mt-3 rounded-lg border bg-yellow-200 p-2 py-6 text-center font-medium text-sm">
+                      {drivers[currentIndex2].driver}
+                    </div>
+                  </div>
+                  <div className="flex w-1/3 flex-col items-center justify-center">
+                    <Image
+                      src="/images/podium_bronze.webp"
+                      alt="third winner"
+                      className="relative z-10 h-full w-[95%]"
+                      width={120}
+                      height={160}
+                    />
+                    <div className="relative z-0 -mt-3 rounded-lg border bg-orange-200 p-2 text-center font-medium text-sm">
+                      {drivers[currentIndex3].driver}
+                    </div>
+                  </div>
+                </div>
               </div>
               <div className="relative mt-4">
                 <Button 
-                  onClick={handleMintNft} 
-                  className="relative z-20 h-[50px] w-full rounded-[16px] border-[0.5px] border-black bg-white transition-all duration-300 ease-in-out hover:translate-x-[-4px] hover:translate-y-[-4px] hover:shadow-lg text-base font-medium"
+                  onClick={confirmMint} 
+                  className={`relative z-20 h-[50px] w-full rounded-[16px] border-[0.5px] border-black ${
+                    loading ? 'bg-gray-200' : txSignature ? 'bg-green-100' : mintError ? 'bg-red-50' : 'bg-white'
+                  } transition-all duration-300 ease-in-out hover:translate-x-[-4px] hover:translate-y-[-4px] hover:shadow-lg text-base font-medium`}
                   disabled={loading}
                 >
-                  {loading ? 'Processing...' : generatedImageUrl ? 'Submit Prediction!' : 'Generate & Submit Prediction!'}
+                  {loading ? (
+                    <div className="flex items-center justify-center">
+                      <div className="mr-2 h-4 w-4 animate-spin rounded-full border-b-2 border-gray-900"></div>
+                      <span>Minting NFT...</span>
+                    </div>
+                  ) : txSignature ? (
+                    <div className="flex items-center justify-center">
+                      <svg className="mr-2 h-5 w-5 text-green-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                      </svg>
+                      <span>Minted Successfully!</span>
+                    </div>
+                  ) : mintError ? (
+                    <div className="flex items-center justify-center">
+                      <svg className="mr-2 h-5 w-5 text-red-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                      </svg>
+                      <span>Retry Minting</span>
+                    </div>
+                  ) : (
+                    'Generate & Mint NFT Prediction!'
+                  )}
                 </Button>
                 <div className="absolute -bottom-1 -right-1 z-10 h-full w-full rounded-2xl bg-[#B5EAD6]"></div>
               </div>
               <p className="mx-auto w-[90%] text-center text-[14px] font-[400] text-[#282828] mt-2">
                 Don&apos;t keep the Podium fun to yourself - predict and share away!
               </p>
+              {txSignature && (
+                <div className="mt-4 flex justify-center">
+                  <a 
+                    href={`https://explorer.solana.com/tx/${txSignature}?cluster=devnet`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="inline-flex items-center justify-center rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground shadow transition-colors hover:bg-primary/90"
+                  >
+                    <svg className="mr-2 h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
+                    </svg>
+                    View on Solana Explorer
+                  </a>
+                </div>
+              )}
+              {mintError && (
+                <div className="mt-2 text-center text-sm text-red-500">
+                  {mintError}
+                </div>
+              )}
             </div>
 
             {/* Right Column - Share */}
@@ -299,23 +447,7 @@ export default function PredictionsPage() {
                 </button>
               </div>
               <div className="mt-[20px] h-[6px] w-full rounded-3xl bg-[#FFEFD8]"></div>
-              
-              {generatedImageUrl && (
-                <div className="mt-4 flex flex-col items-center">
-                  <p className="text-base font-medium mb-2">Your Prediction Image</p>
-                  <div className="cursor-pointer overflow-hidden rounded-lg border shadow-sm">
-                    <div className="relative h-[120px] w-[220px]">
-                      <div className="absolute inset-0 flex items-center justify-center bg-gray-100 text-sm text-gray-500">
-                        Preview: {drivers[currentIndex2].driver} - {drivers[currentIndex1].driver} - {drivers[currentIndex3].driver}
-                      </div>
-                    </div>
-                  </div>
-                  <p className="text-xs text-gray-500 mt-1">
-                    Permanently stored on Arweave
-                  </p>
-                </div>
-              )}
-              
+            
               <div className="mt-4 flex flex-col items-center">
                 <p className="text-base font-medium mb-2">Watch the race highlights</p>
                 <div className="cursor-pointer overflow-hidden rounded-lg border shadow-sm">
