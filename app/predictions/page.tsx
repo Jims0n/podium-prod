@@ -69,7 +69,7 @@ export default function PredictionsPage() {
       
       // Updated endpoint with upload=true parameter for Arweave uploads
       const predictionImageUrl = `https://podium-image-api-3h72-git-main-jims0ns-projects.vercel.app/generateImage?first=${first}&second=${second}&third=${third}&upload=true`;
-     
+      
       //console.log('Image generation URL with Arweave upload:', predictionImageUrl);
       
       // Actually fetch the image URL to ensure it's valid
@@ -105,7 +105,12 @@ export default function PredictionsPage() {
       // Check if wallet is connected
       if (!wallet.connected || !wallet.publicKey) {
         toast.error('Please connect your wallet to mint an NFT');
-        setMintError('Wallet not connected');
+        return;
+      }
+      
+      // Check for duplicate drivers
+      if (hasDuplicateDrivers()) {
+        toast.error('Duplicate drivers are not allowed. Please select different drivers for each position.');
         return;
       }
       
@@ -200,7 +205,22 @@ export default function PredictionsPage() {
     window.open(url, '_blank');
   };
 
+  // Function to check for duplicate drivers
+  const hasDuplicateDrivers = () => {
+    const first = drivers[currentIndex2].driver;
+    const second = drivers[currentIndex1].driver;
+    const third = drivers[currentIndex3].driver;
+    
+    return first === second || first === third || second === third;
+  };
+
   const confirmMint = () => {
+    // Check for duplicate drivers before showing confirmation
+    if (hasDuplicateDrivers()) {
+      toast.error('Duplicate drivers are not allowed. Please select different drivers for each position.');
+      return;
+    }
+    
     // Show a confirmation toast
     toast.info(
       <div className="flex flex-col gap-2">
