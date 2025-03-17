@@ -35,8 +35,10 @@ export default function Home() {
         </h1>
         
         <p className="text-xl text-muted-foreground">
-          The Solana-powered sports prediction platform. Connect your wallet to start making predictions and climb the leaderboard.
+          The onchain F1 mini league powered by Solana and Sonic SVM. Connect your wallet to start making predictions and climb the leaderboard.
         </p>
+        
+       
         
         <ClientOnly fallback={
           <div className="space-y-6">
@@ -72,7 +74,6 @@ export default function Home() {
                       Make Predictions
                     </Link>
                   </Button>
-                  {/* <div className="absolute -bottom-1 -right-1 z-10 h-full w-full rounded-2xl bg-[#B5EAD6]"></div> */}
                 </div>
                 <Button asChild variant="outline" size="lg">
                   <Link href="/leaderboard">
@@ -100,6 +101,14 @@ export default function Home() {
             </div>
           )}
         </ClientOnly>
+        
+        <div className="mt-12 text-xs text-gray-500 dark:text-gray-400 max-w-2xl mx-auto">
+          <p>
+            This website is unofficial and is not associated in any way with the Formula 1 companies. 
+            F1, FORMULA ONE, FORMULA 1, FIA FORMULA ONE WORLD CHAMPIONSHIP, GRAND PRIX and related marks 
+            are trade marks of Formula One Licensing B.V.
+          </p>
+        </div>
       </div>
     </div>
   );

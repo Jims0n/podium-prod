@@ -8,12 +8,26 @@ export function useWalletAuth() {
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
+    // Add a small delay to ensure wallet state is properly initialized
+    const timer = setTimeout(() => {
+      if (connected && publicKey) {
+        setIsAuthenticated(true);
+      } else {
+        setIsAuthenticated(false);
+      }
+      setIsLoading(false);
+    }, 500); // 500ms delay
+
+    return () => clearTimeout(timer);
+  }, [connected, publicKey]);
+
+  // Force update authentication state when wallet connects/disconnects
+  useEffect(() => {
     if (connected && publicKey) {
       setIsAuthenticated(true);
     } else {
       setIsAuthenticated(false);
     }
-    setIsLoading(false);
   }, [connected, publicKey]);
 
   const logout = async () => {

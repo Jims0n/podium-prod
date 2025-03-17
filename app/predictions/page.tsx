@@ -11,9 +11,11 @@ import { drivers } from '@/constants/drivers';
 import ChangePlayer from '@/components/ChangePlayer';
 import { useWallet } from '@solana/wallet-adapter-react';
 import { mintCompressedNft, PredictionAttributes } from '@/services/nftService';
+import { mintSonicNft } from '@/services/sonicNftService';
 import Arweave from 'arweave';
 import fs from 'fs'
 import path from 'path';
+import NetworkInfo from '@/components/NetworkInfo';
 
 
 
@@ -30,23 +32,29 @@ export default function PredictionsPage() {
   const TREE_CREATOR_KEY = process.env.NEXT_PUBLIC_TREE_CREATOR_KEY;
   
   // State and hooks
-  const { isAuthenticated, isLoading, publicKey } = useWalletAuth();
-  const wallet = useWallet(); // Add the wallet hook for minting
+  const { isAuthenticated, publicKey } = useWalletAuth();
+  const wallet = useWallet();
   const router = useRouter();
   const [currentIndex1, setCurrentIndex1] = useState(0);
   const [currentIndex2, setCurrentIndex2] = useState(1);
   const [currentIndex3, setCurrentIndex3] = useState(2);
-  const [loading, setLoading] = useState(false);
+  const [isLoading, setIsLoading] = useState(false);
   const [generatedImageUrl, setGeneratedImageUrl] = useState<string | null>(null);
   const [txSignature, setTxSignature] = useState<string | null>(null);
   const [mintError, setMintError] = useState<string | null>(null);
+  const [mintSuccess, setMintSuccess] = useState(false);
+  const [selectedNetwork, setSelectedNetwork] = useState<'solana' | 'sonic'>('solana');
+  const [mintTxSignature, setMintTxSignature] = useState<string | null>(null);
+  const [explorerUrl, setExplorerUrl] = useState<string | null>(null);
+  const [isConfirmOpen, setIsConfirmOpen] = useState(false);
 
   useEffect(() => {
-    if (!isLoading && !isAuthenticated) {
+    // Check both the isAuthenticated state and the wallet connection directly
+    if (!isLoading && !isAuthenticated && !wallet.connected) {
       toast.error('Please connect your wallet to access predictions');
       router.push('/');
     }
-  }, [isAuthenticated, isLoading, router]);
+  }, [isAuthenticated, isLoading, wallet.connected, router]);
 
   const handleForwardClick = (setIndex: (index: number) => void, currentIndex: number) => {
     if (currentIndex < drivers.length - 1) {
@@ -100,85 +108,78 @@ export default function PredictionsPage() {
     }
   };
 
-  const handleMintNft = async () => {
+  const handleMint = async () => {
+    if (!wallet.connected || !wallet.publicKey) {
+      toast.error('Please connect your wallet first');
+      return;
+    }
+
+    setIsLoading(true);
+    setMintSuccess(false);
+    setMintError(null);
+    setMintTxSignature(null);
+    setExplorerUrl(null);
+
     try {
-      // Check if wallet is connected
-      if (!wallet.connected || !wallet.publicKey) {
-        toast.error('Please connect your wallet to mint an NFT');
-        return;
-      }
-      
-      // Check for duplicate drivers
-      if (hasDuplicateDrivers()) {
-        toast.error('Duplicate drivers are not allowed. Please select different drivers for each position.');
-        return;
-      }
-      
-      setLoading(true);
-      setMintError(null); // Clear any previous errors
-      
       // Generate the prediction image
       const imageUrl = await generatePredictionImage();
-
+      
       if (!imageUrl) {
-        setLoading(false);
-        setMintError('Failed to generate prediction image');
-        return;
+        throw new Error('Failed to generate prediction image');
       }
+
+      // Mint the NFT on the selected network
+      let txSignature: string | null = null;
       
-      console.log('Image URL:', imageUrl);
-      
-      // Create the NFT attributes
-      const predictionAttributes: PredictionAttributes = {
-        race: GRAND_PRIX,
-        first: drivers[currentIndex2].driver,
-        second: drivers[currentIndex1].driver,
-        third: drivers[currentIndex3].driver,
-        date: new Date().toISOString().split('T')[0] // Format as YYYY-MM-DD
-      };
-      
-      // Generate a shorter name for the NFT (max 32 characters)
-      const nftName = `Podium: Australian GP 2025`;
-      
-      // Mint the compressed NFT
-      try {
-        const signature = await mintCompressedNft(
+      if (selectedNetwork === 'solana') {
+        // Mint on Solana
+        txSignature = await mintCompressedNft(
           wallet,
           imageUrl,
-          nftName,
-          predictionAttributes
+          `F1 Prediction: ${GRAND_PRIX}`,
+          {
+            race: GRAND_PRIX,
+            first: drivers[currentIndex2].driver,
+            second: drivers[currentIndex1].driver,
+            third: drivers[currentIndex3].driver,
+            date: new Date().toISOString(),
+          }
+        );
+      } else if (selectedNetwork === 'sonic') {
+        // Mint on Sonic SVM
+        txSignature = await mintSonicNft(
+          wallet,
+          imageUrl,
+          `F1 Prediction: ${GRAND_PRIX}`,
+          {
+            race: GRAND_PRIX,
+            first: drivers[currentIndex2].driver,
+            second: drivers[currentIndex1].driver,
+            third: drivers[currentIndex3].driver,
+            date: new Date().toISOString(),
+          }
         );
         
-        setTxSignature(signature);
-        setMintError(null); // Clear any errors on success
-        toast.success('Prediction successfully minted as an NFT!');
-        console.log(`NFT minted successfully! Transaction: ${signature}`);
-      } catch (mintError: any) {
-        console.error('Mint error:', mintError);
-        
-        // Set the error message for the UI
-        let errorMessage = mintError.message || 'Unknown error';
-        
-        // Show a more specific error message based on the error
-        if (mintError.message.includes('Wallet not connected')) {
-          errorMessage = 'Please connect your wallet to mint an NFT';
-        } else if (mintError.message.includes('insufficient funds')) {
-          errorMessage = 'Insufficient SOL balance. Please add more SOL to your wallet.';
-        } else if (mintError.message.includes('User rejected')) {
-          errorMessage = 'Transaction was rejected by the wallet';
+        // Set explorer URL for Sonic
+        if (txSignature) {
+          setExplorerUrl(`https://explorer.sonic.game/tx/${txSignature}`);
         }
-        
-        setMintError(errorMessage);
-        toast.error(`Failed to mint NFT: ${errorMessage}`);
       }
       
-      setLoading(false);
+      if (txSignature) {
+        setMintTxSignature(txSignature);
+        setTxSignature(txSignature);
+        setMintSuccess(true);
+        toast.success(`Successfully minted your prediction NFT on ${selectedNetwork === 'sonic' ? 'Sonic SVM' : 'Solana'}!`);
+      } else {
+        throw new Error('No transaction signature returned');
+      }
     } catch (error: any) {
-      setLoading(false);
-      const errorMessage = error.message || 'Unknown error';
-      setMintError(errorMessage);
-      toast.error(`Failed to submit prediction: ${errorMessage}`);
-      console.error(error);
+      console.error('Error minting NFT:', error);
+      setMintError(error.message || 'Failed to mint NFT');
+      toast.error(`Failed to mint NFT: ${error.message || 'Unknown error'}`);
+    } finally {
+      setIsLoading(false);
     }
   };
 
@@ -196,7 +197,11 @@ export default function PredictionsPage() {
     
     // If the transaction was successful, include the transaction link
     if (txSignature) {
-      text += `View my NFT on Solana Explorer: https://explorer.solana.com/tx/${txSignature}?cluster=devnet\n\n`;
+      if (selectedNetwork === 'solana') {
+        text += `View my NFT on Solana Explorer: https://explorer.solana.com/tx/${txSignature}?cluster=devnet\n\n`;
+      } else {
+        text += `View my NFT on Sonic Explorer: https://explorer.sonic.game/tx/${txSignature}\n\n`;
+      }
     }
     
     text += `Make your own prediction at podiumleague.com`;
@@ -224,8 +229,8 @@ export default function PredictionsPage() {
     // Show a confirmation toast
     toast.info(
       <div className="flex flex-col gap-2">
-        <p>You are about to mint your prediction as an NFT on Solana.</p>
-        <p>This will require a small amount of SOL for transaction fees.</p>
+        <p>You are about to mint your prediction as an NFT on {selectedNetwork === 'solana' ? 'Solana' : 'Sonic SVM'}.</p>
+        <p>This will require a small amount of {selectedNetwork === 'solana' ? 'SOL' : 'Sonic tokens'} for transaction fees.</p>
         <div className="flex justify-end gap-2 mt-2">
           <Button 
             variant="outline" 
@@ -239,9 +244,12 @@ export default function PredictionsPage() {
             size="sm" 
             onClick={() => {
               toast.dismiss();
-              handleMintNft();
+              handleMint();
             }}
             className="text-xs"
+            style={{
+              backgroundColor: selectedNetwork === 'solana' ? '#9333ea' : '#2563eb'
+            }}
           >
             Confirm Mint
           </Button>
@@ -251,6 +259,15 @@ export default function PredictionsPage() {
         duration: 10000,
       }
     );
+  };
+
+  // Confirmation Dialog
+  const openConfirmDialog = () => {
+    setIsConfirmOpen(true);
+  };
+
+  const closeConfirmDialog = () => {
+    setIsConfirmOpen(false);
   };
 
   const LoadingView = () => (
@@ -266,7 +283,7 @@ export default function PredictionsPage() {
     <ClientOnly fallback={<LoadingView />}>
       {isLoading ? (
         <LoadingView />
-      ) : !isAuthenticated ? (
+      ) : (!isAuthenticated && !wallet.connected) ? (
         null
       ) : (
         <section className="py-4 px-4 md:px-6 max-w-7xl mx-auto min-h-[calc(100vh-4rem)] flex flex-col">
@@ -274,6 +291,37 @@ export default function PredictionsPage() {
             <h1 className="text-2xl md:text-3xl font-bold">{GRAND_PRIX}</h1>
             <p className="text-sm text-muted-foreground">Predict the podium finishers for this race</p>
           </div>
+          
+          {/* Network Selector */}
+          <div className="mb-6 flex justify-center">
+            <div className="bg-white dark:bg-gray-800 p-3 rounded-lg shadow-md">
+              <div className="flex space-x-2">
+                <button
+                  onClick={() => setSelectedNetwork('solana')}
+                  className={`px-4 py-2 rounded-md transition-colors ${
+                    selectedNetwork === 'solana'
+                      ? 'bg-purple-600 text-white'
+                      : 'bg-gray-200 dark:bg-gray-700 text-gray-800 dark:text-gray-200'
+                  }`}
+                >
+                  Solana (Compressed)
+                </button>
+                <button
+                  onClick={() => setSelectedNetwork('sonic')}
+                  className={`px-4 py-2 rounded-md transition-colors ${
+                    selectedNetwork === 'sonic'
+                      ? 'bg-blue-600 text-white'
+                      : 'bg-gray-200 dark:bg-gray-700 text-gray-800 dark:text-gray-200'
+                  }`}
+                >
+                  Sonic SVM
+                </button>
+              </div>
+            </div>
+          </div>
+          
+          {/* Network Info */}
+          <NetworkInfo network={selectedNetwork} />
           
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4 flex-1">
             {/* Left Column - Pick your racer */}
@@ -345,7 +393,7 @@ export default function PredictionsPage() {
             {/* Middle Column - Podium */}
             <div className="bg-white/50 p-4 rounded-xl border shadow-sm">
               <div className="relative w-full h-[300px]">
-                {loading && (
+                {isLoading && (
                   <div className="absolute inset-0 z-30 flex items-center justify-center bg-white/70 rounded-lg">
                     <div className="flex flex-col items-center">
                       <div className="h-10 w-10 animate-spin rounded-full border-4 border-primary border-t-transparent"></div>
@@ -396,61 +444,79 @@ export default function PredictionsPage() {
                 </div>
               </div>
               <div className="relative mt-4">
-                <Button 
-                  onClick={confirmMint} 
-                  className={`relative z-20 h-[50px] w-full rounded-[16px] border-[0.5px] border-black ${
-                    loading ? 'bg-gray-200' : txSignature ? 'bg-green-100' : mintError ? 'bg-red-50' : 'bg-white'
-                  } transition-all duration-300 ease-in-out hover:translate-x-[-4px] hover:translate-y-[-4px] hover:shadow-lg text-base font-medium`}
-                  disabled={loading}
-                >
-                  {loading ? (
-                    <div className="flex items-center justify-center">
-                      <div className="mr-2 h-4 w-4 animate-spin rounded-full border-b-2 border-gray-900"></div>
-                      <span>Minting NFT...</span>
-                    </div>
-                  ) : txSignature ? (
-                    <div className="flex items-center justify-center">
-                      <svg className="mr-2 h-5 w-5 text-green-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-                      </svg>
-                      <span>Minted Successfully!</span>
-                    </div>
-                  ) : mintError ? (
-                    <div className="flex items-center justify-center">
-                      <svg className="mr-2 h-5 w-5 text-red-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
-                      </svg>
-                      <span>Retry Minting</span>
-                    </div>
-                  ) : (
-                    'Generate & Mint NFT Prediction!'
-                  )}
-                </Button>
-                <div className="absolute -bottom-1 -right-1 z-10 h-full w-full rounded-2xl bg-[#B5EAD6]"></div>
-              </div>
-              <p className="mx-auto w-[90%] text-center text-[14px] font-[400] text-[#282828] mt-2">
-                Don&apos;t keep the Podium fun to yourself - predict and share away!
-              </p>
-              {txSignature && (
-                <div className="mt-4 flex justify-center">
-                  <a 
-                    href={`https://explorer.solana.com/tx/${txSignature}?cluster=devnet`}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="inline-flex items-center justify-center rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground shadow transition-colors hover:bg-primary/90"
+                <div className="flex flex-col items-center mt-8">
+                  <button
+                    onClick={openConfirmDialog}
+                    disabled={isLoading || !isAuthenticated || !wallet.connected}
+                    className={`px-6 py-3 rounded-lg font-bold text-white transition-all duration-200 ${
+                      isLoading
+                        ? 'bg-gray-500 cursor-not-allowed'
+                        : mintSuccess
+                        ? 'bg-green-500 hover:bg-green-600'
+                        : mintError
+                        ? 'bg-red-500 hover:bg-red-600'
+                        : 'bg-blue-600 hover:bg-blue-700'
+                    }`}
                   >
-                    <svg className="mr-2 h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
-                    </svg>
-                    View on Solana Explorer
-                  </a>
+                    {isLoading ? (
+                      <div className="flex items-center">
+                        <svg className="animate-spin -ml-1 mr-3 h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                          <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                          <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                        </svg>
+                        Minting...
+                      </div>
+                    ) : mintSuccess ? (
+                      <div className="flex items-center">
+                        <svg className="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 13l4 4L19 7"></path>
+                        </svg>
+                        Minted!
+                      </div>
+                    ) : mintError ? (
+                      <div className="flex items-center">
+                        <svg className="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12"></path>
+                        </svg>
+                        Failed
+                      </div>
+                    ) : (
+                      `Mint on ${selectedNetwork === 'sonic' ? 'Sonic SVM' : 'Solana'}`
+                    )}
+                  </button>
+                  
+                  {/* Transaction Explorer Link */}
+                  {mintSuccess && explorerUrl && (
+                    <div className="mt-4 text-center">
+                      <a 
+                        href={explorerUrl} 
+                        target="_blank" 
+                        rel="noopener noreferrer"
+                        className="text-blue-500 hover:text-blue-700 underline"
+                      >
+                        View transaction on explorer
+                      </a>
+                    </div>
+                  )}
+                  
+                  {/* Twitter Share Button */}
+                  {mintSuccess && (
+                    <div className="mt-2">
+                      <button
+                        onClick={handleTwitterShare}
+                        className="inline-flex items-center px-4 py-2 rounded-md text-sm font-medium text-white bg-[#1DA1F2] hover:bg-[#1a94e0]"
+                      >
+                        <BsTwitter className="mr-2 h-4 w-4" />
+                        Share on Twitter
+                      </button>
+                    </div>
+                  )}
+                  
+                  <p className="mt-4 text-center text-gray-600">
+                    Predict the podium and share your prediction with friends!
+                  </p>
                 </div>
-              )}
-              {mintError && (
-                <div className="mt-2 text-center text-sm text-red-500">
-                  {mintError}
-                </div>
-              )}
+              </div>
             </div>
 
             {/* Right Column - Share */}
@@ -495,6 +561,41 @@ export default function PredictionsPage() {
               </div>
             </div>
           </div>
+          
+          {/* Confirmation Dialog */}
+          {isConfirmOpen && (
+            <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+              <div className="bg-white p-6 rounded-lg max-w-md w-full">
+                <h3 className="text-xl font-bold mb-4">Confirm Mint</h3>
+                <p className="mb-4">
+                  You are about to mint your prediction as an NFT on {selectedNetwork === 'sonic' ? 'Sonic SVM' : 'Solana'}.
+                </p>
+                <p className="mb-4">
+                  <strong>Race:</strong> {GRAND_PRIX}<br />
+                  <strong>1st Place:</strong> {drivers[currentIndex2].driver}<br />
+                  <strong>2nd Place:</strong> {drivers[currentIndex1].driver}<br />
+                  <strong>3rd Place:</strong> {drivers[currentIndex3].driver}
+                </p>
+                <div className="flex justify-end space-x-4">
+                  <button
+                    onClick={closeConfirmDialog}
+                    className="px-4 py-2 bg-gray-200 rounded hover:bg-gray-300"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    onClick={() => {
+                      closeConfirmDialog();
+                      handleMint();
+                    }}
+                    className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700"
+                  >
+                    Confirm
+                  </button>
+                </div>
+              </div>
+            </div>
+          )}
         </section>
       )}
     </ClientOnly>
